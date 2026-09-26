@@ -29,7 +29,6 @@ vala_args = [
 
 install_data(
   'src/libcsv.vapi',
-  'src/libcsv.deps',
   install_dir: get_option('datadir') / 'vala' / 'vapi',
 )
 
