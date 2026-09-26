@@ -12,6 +12,6 @@ case ${ID:?} in
 esac 1>/dev/null
 
 meson setup build
-meson compile -C build --warnlevel 2
+meson compile -C build
 meson test -C build --print-errorlogs --verbose
 DESTDIR="${PWD}/destdir" meson install -C build
