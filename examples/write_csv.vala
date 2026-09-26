@@ -1,0 +1,70 @@
+/**
+ * Write CSV rows with libcsv. csv_fwrite quotes a single field; delimiters
+ * and record separators are the caller's responsibility.
+ */
+
+using Csv;
+
+public class CSVWriter : Object {
+	public bool write_file (string filename) {
+		var file = FileStream.open (filename, "wb");
+		if (file == null) {
+			stderr.printf ("Failed to open %s for writing\n", filename);
+			return false;
+		}
+
+		int rows = 0;
+		if (!write_row (file, {"Name", "Age", "City", "Notes"})) {
+			return false;
+		}
+		rows++;
+		if (!write_row (file, {"Alice", "30", "New York", "Engineer"})) {
+			return false;
+		}
+		rows++;
+		if (!write_row (file, {"Bob", "25", "Los Angeles", "Designer"})) {
+			return false;
+		}
+		rows++;
+		if (!write_row (file, {"Charlie", "35", "Chicago", "Manager"})) {
+			return false;
+		}
+		rows++;
+		if (!write_row (file, {"Diana", "28", "Houston", "Contains, comma"})) {
+			return false;
+		}
+		rows++;
+		if (!write_row (file, {"Eve", "32", "Phoenix", "Has \"quotes\""})) {
+			return false;
+		}
+		rows++;
+
+		stdout.printf ("Wrote %d rows to %s\n", rows, filename);
+		return true;
+	}
+
+	private static bool write_row (FileStream file, string[] fields) {
+		for (int i = 0; i < fields.length; i++) {
+			if (i > 0 && file.putc (',') == FileStream.EOF) {
+				stderr.printf ("Failed to write delimiter\n");
+				return false;
+			}
+			unowned string field = fields[i];
+			if (Csv.fwrite (file, field, field.length) != 0) {
+				stderr.printf ("Failed to write field\n");
+				return false;
+			}
+		}
+		if (file.putc ('\n') == FileStream.EOF) {
+			stderr.printf ("Failed to write newline\n");
+			return false;
+		}
+		return true;
+	}
+}
+
+public int main (string[] args) {
+	string output_file = args.length > 1 ? args[1] : "output.csv";
+	var writer = new CSVWriter ();
+	return writer.write_file (output_file) ? 0 : 1;
+}
