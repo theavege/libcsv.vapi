@@ -47,6 +47,7 @@ jobs:
             meson:p
             ninja:p
             vala:p
+            git:p
 
       - name: Build libcsv and project on Windows
         if: runner.os == 'Windows'
