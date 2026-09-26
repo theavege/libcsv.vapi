@@ -1,57 +1,28 @@
+---
 name: Make
 
 on:
   schedule:
     - cron: '0 0 1 * *'
   pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
-      - init
-  workflow_dispatch:
 
 jobs:
   make:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-          - windows-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup on Linux
-        if: runner.os != 'Windows'
-        shell: bash
-        run: bash .github/workflows/make.sh setup
-
-      - name: Build on Linux
-        if: runner.os != 'Windows'
-        shell: bash
-        run: bash .github/workflows/make.sh build
-
-      - name: Setup on Windows
-        if: runner.os == 'Windows'
-        uses: msys2/setup-msys2@v2
+        uses: actions/checkout@v7
         with:
-          msystem: UCRT64
-          update: true
-          pacboy: |
-            cc:p
-            pkg-config:p
-            meson:p
-            ninja:p
-            vala:p
-            git:p
+          submodules: recursive
 
-      - name: Build libcsv and project on Windows
-        if: runner.os == 'Windows'
-        shell: msys2 {0}
+      - name: Build on Unix
+        shell: bash
         run: |
-          bash .github/workflows/make.sh setup
-          bash .github/workflows/make.sh build
+          bash '.github/workflows/make.sh'
