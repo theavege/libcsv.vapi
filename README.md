@@ -45,7 +45,18 @@ executable('app', 'main.vala',
 ```
 
 ```bash
-valac --pkg glib-2.0 --vapidir src --pkg libcsv main.vala -X -lcsv
+declare -ar VAR=(
+    --verbose
+    --fatal-warnings
+    --Xcc=-O3
+    --cc=clang
+    --vapidir=src
+    --enable-{checking,mem-profiler,gobject-tracing}
+    --pkg=libcsv
+    -X -lcsv
+)
+vala "${VAR[@]}" 'examples/read_csv.vala' --run-args 'examples/sample.csv'
+vala "${VAR[@]}" 'examples/write_csv.vala'
 ```
 
 Compile with `--fatal-warnings` (Meson does this for this repo).

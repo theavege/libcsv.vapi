@@ -3,68 +3,52 @@
  * and record separators are the caller's responsibility.
  */
 
-using Csv;
+errordomain Err { WRITE }
 
 public class CSVWriter : Object {
-	public bool write_file (string filename) {
-		var file = FileStream.open (filename, "wb");
-		if (file == null) {
-			stderr.printf ("Failed to open %s for writing\n", filename);
-			return false;
-		}
+    public void write_file (string filename) throws Error {
+        var file = FileStream.open (filename, "wb");
+        if (file == null)
+            throw new Err.WRITE ("Failed to open %s for writing\n", filename);
 
-		int rows = 0;
-		if (!write_row (file, {"Name", "Age", "City", "Notes"})) {
-			return false;
-		}
-		rows++;
-		if (!write_row (file, {"Alice", "30", "New York", "Engineer"})) {
-			return false;
-		}
-		rows++;
-		if (!write_row (file, {"Bob", "25", "Los Angeles", "Designer"})) {
-			return false;
-		}
-		rows++;
-		if (!write_row (file, {"Charlie", "35", "Chicago", "Manager"})) {
-			return false;
-		}
-		rows++;
-		if (!write_row (file, {"Diana", "28", "Houston", "Contains, comma"})) {
-			return false;
-		}
-		rows++;
-		if (!write_row (file, {"Eve", "32", "Phoenix", "Has \"quotes\""})) {
-			return false;
-		}
-		rows++;
+        int rows = 0;
+        this.write_row (file, {"Name", "Age", "City", "Notes"});
+        rows++;
+        this.write_row (file, {"Alice", "30", "New York", "Engineer"});
+        rows++;
+        this.write_row (file, {"Bob", "25", "Los Angeles", "Designer"});
+        rows++;
+        this.write_row (file, {"Charlie", "35", "Chicago", "Manager"});
+        rows++;
+        this.write_row (file, {"Diana", "28", "Houston", "Contains, comma"});
+        rows++;
+        this.write_row (file, {"Eve", "32", "Phoenix", "Has \"quotes\""});
+        rows++;
 
-		stdout.printf ("Wrote %d rows to %s\n", rows, filename);
-		return true;
-	}
+        message ("Wrote %d rows to %s\n", rows, filename);
+    }
 
-	private static bool write_row (FileStream file, string[] fields) {
-		for (int i = 0; i < fields.length; i++) {
-			if (i > 0 && file.putc (',') == FileStream.EOF) {
-				stderr.printf ("Failed to write delimiter\n");
-				return false;
-			}
-			unowned string field = fields[i];
-			if (Csv.fwrite (file, field, field.length) != 0) {
-				stderr.printf ("Failed to write field\n");
-				return false;
-			}
-		}
-		if (file.putc ('\n') == FileStream.EOF) {
-			stderr.printf ("Failed to write newline\n");
-			return false;
-		}
-		return true;
-	}
+    private static void write_row (FileStream file, string[] fields) throws Error {
+        for (int i = 0; i < fields.length; i++) {
+            if (i > 0 && file.putc (',') == FileStream.EOF)
+                throw new Err.WRITE ("Failed to write delimiter\n");
+            unowned string field = fields[i];
+            if (Csv.fwrite (file, field, field.length) != 0)
+                throw new Err.WRITE ("Failed to write field\n");
+        }
+        if (file.putc ('\n') == FileStream.EOF)
+            throw new Err.WRITE ("Failed to write newline\n");
+    }
 }
 
 public int main (string[] args) {
-	string output_file = args.length > 1 ? args[1] : "output.csv";
-	var writer = new CSVWriter ();
-	return writer.write_file (output_file) ? 0 : 1;
+    try {
+        string output_file = args.length > 1 ? args[1] : "output.csv";
+        new CSVWriter ()
+            .write_file (output_file);
+        return 0;
+    } catch (Error e) {
+        critical("failed while %s: %s\n", args[0], e.message);
+        return 1;
+    }
 }
