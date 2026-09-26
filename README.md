@@ -1,279 +1,192 @@
 # libcsv.vapi
 
-Vala bindings for the libcsv library by Robert Gamble.
+Vala bindings for [Robert Gamble's libcsv](https://github.com/rgamble/libcsv),
+a small C library for parsing and writing CSV data.
 
-## Overview
-
-This project provides Vala language bindings for [libcsv](http://libcsv.sourceforge.net/), a C library for parsing and writing CSV files. The bindings allow Vala developers to easily work with CSV data in their applications.
-
-## Features
-
-- Full coverage of libcsv parsing and writing functions
-- Type-safe Vala API with proper error handling
-- Support for custom parsing options (whitespace handling, quote relaxation, etc.)
-- Support for custom writing options (quoting, escaping)
-- Callback-based parsing for efficient memory usage
-- Line and field number tracking during parsing
+The VAPI maps the C API 1:1 (`csv.h`). libcsv is callback-based, quotes a
+**single field** at a time when writing, and does not invent extra parse/write
+option flags — those belong to other CSV libraries.
 
 ## Requirements
 
-- Vala compiler (`valac`)
+- Vala (`valac`)
 - GLib 2.0
-- libcsv library (optional, for linking)
-- Meson build system (for building examples and tests)
+- libcsv (`csv.h` and `-lcsv`; Debian/Ubuntu: `libcsv-dev`)
+- Meson and Ninja, if you want to build the examples and tests
 
-## Installation
-
-### Installing the VAPI file
-
-To use the bindings in your Vala project, copy the `libcsv.vapi` file to your project directory or install it system-wide:
+## Install the bindings
 
 ```bash
-# System-wide installation
-sudo cp libcsv.vapi /usr/share/vala/vapi/
-
-# Or to a custom location
-cp libcsv.vapi /path/to/your/project/
+sudo install -m644 src/libcsv.vapi src/libcsv.deps /usr/share/vala/vapi/
 ```
 
-### Using with Meson
+Or with Meson:
 
-If you're using Meson as your build system, include this project as a submodule:
-
-```meson
-libcsv_vapi_dir = subdir('libcsv-vapi')
+```bash
+meson setup build
+meson compile -C build
+meson test -C build
+sudo meson install -C build
 ```
 
-Then compile your Vala code with:
+There is no `libcsv.pc` in most distro packages. Meson locates the library with
+`cc.find_library('csv')` and `csv.h`.
+
+## Use in your project
 
 ```meson
-executable('myapp',
-  'main.vala',
-  vala_args: ['--vapidir', libcsv_vapi_dir],
-  dependencies: glib_dep
+cc = meson.get_compiler('c')
+libcsv_dep = cc.find_library('csv', required: true)
+
+executable('app', 'main.vala',
+  dependencies: [dependency('glib-2.0'), libcsv_dep],
+  vala_args: ['--vapidir', meson.current_source_dir() / 'path/to/src', '--pkg', 'libcsv'],
 )
 ```
 
-### Building Examples and Tests
-
 ```bash
-# Configure the build
-meson setup builddir
-
-# Build everything
-ninja -C builddir
-
-# Run tests
-ninja -C builddir test
-
-# Install (optional)
-sudo ninja -C builddir install
+valac --pkg glib-2.0 --vapidir src --pkg libcsv main.vala -X -lcsv
 ```
 
-## Usage
+Compile with `--fatal-warnings` (Meson does this for this repo).
 
-### Reading a CSV File
+## Parse
+
+Initialize a `Csv.Parser`, feed it chunks with `parse`, then `fini`. Field and
+record callbacks are C function pointers (`has_target = false`): use static
+methods and pass `this` as userdata.
 
 ```vala
-using LibCSV;
+using Csv;
 
-public class CSVReader : GLib.Object {
-    private string[] current_row;
+class RowPrinter {
+    string[] row;
 
-    public CSVReader () {
-        current_row = {};
-    }
-
-    private void on_field (void* field, size_t field_size, void* user_data) {
-        string field_str = ((string)field).substring (0, (int)field_size);
-        current_row += field_str;
-    }
-
-    private void on_record (void* user_data) {
-        stdout.printf ("Row: %s\n", string.joinv (", ", current_row));
-        current_row = {};
-    }
-
-    public bool parse_file (string filename) {
-        var parser = LibCSV.Parser ();
-        var options = ParseOptions.SKIP_INITIAL_WHITESPACE | ParseOptions.SKIP_EMPTY_LINES;
-
-        if (LibCSV.Parser.init (&parser, options) != Error.SUCCESS) {
-            stderr.printf ("Failed to initialize parser: %s\n", LibCSV.get_error (&parser));
-            return false;
+    static void on_field (void* field, size_t len, void* data) {
+        unowned var self = (RowPrinter) data;
+        if (field == null) {
+            self.row += "";
+            return;
         }
-
-        var file = FileStream.open (filename, "r");
-        if (file == null) {
-            LibCSV.Parser.free (&parser);
-            return false;
+        var buf = new uint8[len + 1];
+        if (len > 0) {
+            Memory.copy (buf, field, len);
         }
+        buf[len] = 0;
+        self.row += (string) buf;
+    }
 
-        FieldCallback field_cb = on_field;
-        RecordCallback record_cb = on_record;
+    static void on_record (int c, void* data) {
+        unowned var self = (RowPrinter) data;
+        stdout.printf ("%s\n", string.joinv (",", self.row));
+        self.row = {};
+    }
 
-        var result = LibCSV.parse_file (&parser, file, field_cb, record_cb, this);
-        LibCSV.finalize (&parser, field_cb, record_cb, this);
-        LibCSV.Parser.free (&parser);
-        file.close ();
-
-        return result >= 0;
+    public void parse_buffer (string csv) {
+        var parser = Parser (Options.APPEND_NULL);
+        size_t n = csv.length;
+        if (parser.parse (csv, n, on_field, on_record, this) != n) {
+            stderr.printf ("%s\n", Csv.strerror ((int) parser.error ()));
+            return;
+        }
+        parser.fini (on_field, on_record, this);
     }
 }
 ```
 
-### Writing a CSV File
+`parse` returns the number of bytes consumed. If that is less than `len`, call
+`parser.error()` / `Csv.strerror()`.
+
+`on_record`'s `int c` is the byte that ended the row (`Csv.CR`, `Csv.LF`, or a
+custom terminator), or `-1` when `fini` completes a row without a newline.
+
+### Parser options (`Csv.Options`)
+
+| Flag | Meaning |
+| --- | --- |
+| `STRICT` | Reject malformed CSV |
+| `REPALL_NL` | Report unquoted CR/LF inside fields |
+| `STRICT_FINI` | `fini` fails if the last field is an unclosed quote |
+| `APPEND_NULL` | NUL-terminate field buffers (not counted in `len`) |
+| `EMPTY_IS_NULL` | Empty *unquoted* fields are passed as `field == null` |
+
+Use `set_delim` / `set_quote` for TSV or a custom quote character.
+`set_space_func` / `set_term_func` override what counts as whitespace and as a
+row terminator.
+
+## Write
+
+`csv_write` / `csv_fwrite` encode **one field**. They always wrap the field in
+quotes and double internal quotes. You write commas and newlines yourself.
 
 ```vala
-using LibCSV;
+using Csv;
 
-var file = FileStream.open ("output.csv", "w");
-if (file != null) {
-    string[] fields = {"Name", "Age", "City"};
-    var options = WriteOptions.QUOTE_NON_NUMERIC;
-
-    LibCSV.write (file, fields, fields.length,
-                  options, ',', '"', '\\');
-    file.putc ('\n');
-
-    string[] data = {"Alice", "30", "New York"};
-    LibCSV.write (file, data, data.length,
-                  options, ',', '"', '\\');
-    file.putc ('\n');
-
-    file.close ();
+void write_row (FileStream fp, string[] fields) {
+    for (int i = 0; i < fields.length; i++) {
+        if (i > 0) {
+            fp.putc (',');
+        }
+        if (Csv.fwrite (fp, fields[i], fields[i].length) != 0) {
+            error ("write failed");
+        }
+    }
+    fp.putc ('\n');
 }
 ```
 
-### Parse Options
+`csv_write (null, 0, src, src_size)` returns the quoted size so you can
+allocate a buffer. `write2` / `fwrite2` take a custom quote byte.
 
-- `ParseOptions.NONE` - Default behavior
-- `ParseOptions.SKIP_INITIAL_WHITESPACE` - Skip whitespace at start of fields
-- `ParseOptions.SKIP_TRAILING_WHITESPACE` - Skip whitespace at end of fields
-- `ParseOptions.SKIP_EMPTY_LINES` - Skip empty lines
-- `ParseOptions.RELAXED_QUOTES` - Allow unquoted fields with quotes
-- `ParseOptions.RELAXED_ESCAPES` - Allow unrecognized escape sequences
+## API map
 
-### Write Options
+| Vala | C |
+| --- | --- |
+| `Csv.Parser (options)` / `parser.init (options)` | `csv_init` |
+| `parser.parse (s, len, cb1, cb2, data)` | `csv_parse` |
+| `parser.fini (cb1, cb2, data)` | `csv_fini` |
+| `parser.free ()` | `csv_free` (also the struct destroy function) |
+| `parser.error ()` | `csv_error` |
+| `Csv.strerror (err)` | `csv_strerror` |
+| `Csv.write` / `Csv.fwrite` | `csv_write` / `csv_fwrite` |
+| `Csv.write2` / `Csv.fwrite2` | `csv_write2` / `csv_fwrite2` |
+| `get_opts` / `set_opts` | `csv_get_opts` / `csv_set_opts` |
+| `get_delim` / `set_delim` | `csv_get_delim` / `csv_set_delim` |
+| `get_quote` / `set_quote` | `csv_get_quote` / `csv_set_quote` |
+| `set_space_func` / `set_term_func` | `csv_set_space_func` / `csv_set_term_func` |
+| `set_realloc_func` / `set_free_func` | `csv_set_realloc_func` / `csv_set_free_func` |
+| `set_blk_size` / `get_buffer_size` | `csv_set_blk_size` / `csv_get_buffer_size` |
 
-- `WriteOptions.NONE` - Default behavior
-- `WriteOptions.QUOTE_ALL` - Quote all fields
-- `WriteOptions.QUOTE_NON_NUMERIC` - Quote non-numeric fields
-- `WriteOptions.ESCAPE_ALL` - Escape special characters
+Error codes (`Csv.Status`): `SUCCESS`, `EPARSE`, `ENOMEM`, `ETOOBIG`, `EINVALID`.
 
-## API Reference
-
-### Core Types
-
-#### `LibCSV.Error`
-Error codes returned by libcsv functions:
-- `SUCCESS` - Operation completed successfully
-- `MEMORY_ERROR` - Memory allocation failed
-- `PARSE_ERROR` - CSV parsing error
-- `WRITE_ERROR` - Write operation failed
-- `FILE_ERROR` - File operation error
-
-#### `LibCSV.Parser`
-Opaque structure representing a CSV parser.
-
-**Methods:**
-- `init (Parser* parser, ParseOptions options)` - Initialize parser
-- `free (Parser* parser)` - Free parser resources
-
-#### `LibCSV.ParseOptions` (Flags)
-Options controlling parser behavior.
-
-#### `LibCSV.WriteOptions` (Flags)
-Options controlling writer behavior.
-
-### Functions
-
-#### Parsing
-- `parse (Parser* parser, void* data, size_t data_size, FieldCallback field_cb, RecordCallback? record_cb, void* user_data)` - Parse CSV from buffer
-- `parse_file (Parser* parser, FILE* stream, FieldCallback field_cb, RecordCallback? record_cb, void* user_data)` - Parse CSV from file
-- `finalize (Parser* parser, FieldCallback field_cb, RecordCallback? record_cb, void* user_data)` - Finalize parsing
-
-#### Writing
-- `write (FILE* stream, string[] fields, size_t num_fields, WriteOptions options, char delimiter, char quote, char escape)` - Write CSV row
-- `write_field (FILE* stream, void* field, size_t field_size, WriteOptions options, char delimiter, char quote, char escape)` - Write single field
-
-#### Status
-- `get_error (Parser* parser)` - Get error message
-- `eof (Parser* parser)` - Check if end-of-file reached
-- `get_line (Parser* parser)` - Get current line number
-- `get_field (Parser* parser)` - Get current field number
-
-### Callbacks
-
-#### `FieldCallback`
-```vala
-public delegate void FieldCallback (void* field, size_t field_size, void* user_data);
-```
-Called for each field parsed. The field data may contain null bytes.
-
-#### `RecordCallback`
-```vala
-public delegate void RecordCallback (void* user_data);
-```
-Called when a complete record (row) has been parsed.
+Character constants: `TAB`, `SPACE`, `CR`, `LF`, `COMMA`, `QUOTE`.
 
 ## Examples
 
-The `examples/` directory contains complete working examples:
-
-- `read_csv.vala` - Read and display a CSV file
-- `write_csv.vala` - Create a CSV file with proper quoting
-
-Build and run examples:
-
 ```bash
-# Build
-ninja -C builddir
-
-# Run read example
-./builddir/read_csv_example test.csv
-
-# Run write example
-./builddir/write_csv_example output.csv
+meson compile -C build
+./build/read-csv examples/sample.csv
+./build/write-csv /tmp/out.csv
 ```
 
-## Running Tests
+## Tests
 
 ```bash
-# Run the test suite
-ninja -C builddir test
-
-# Or run directly
-./builddir/test_libcsv
+meson test -C build --print-errorlogs
+# or
+valac --fatal-warnings --pkg glib-2.0 --vapidir src --pkg libcsv \
+      tests/test_libcsv.vala -X -lcsv -o test-libcsv
+./test-libcsv
 ```
 
-Tests use TAP (Test Anything Protocol) format for compatibility with CI systems.
-
-## Generating Documentation
-
-If `vapigen` is available, you can generate GIR meta
-
-```bash
-vapigen --pkg glib-2.0 --gir LibCSV-1.0.gir libcsv.vapi
-```
-
-This creates a GObject Introspection repository that can be used by other languages.
+Tests speak TAP.
 
 ## License
 
-This project is licensed under the LGPL-2.1 license, compatible with libcsv.
-
-## Contributing
-
-Contributions are welcome! Please ensure that:
-
-1. All code follows Vala coding conventions
-2. New features include appropriate documentation
-3. Changes pass existing tests
-4. New functionality includes test coverage
+LGPL-2.1, same family as libcsv.
 
 ## Links
 
-- [libcsv Homepage](http://libcsv.sourceforge.net/)
-- [Vala Documentation](https://wiki.gnome.org/Projects/Vala)
-- [Meson Build System](https://mesonbuild.com/)
+- [libcsv](https://github.com/rgamble/libcsv)
+- [Vala](https://vala.dev/)
+- [Meson](https://mesonbuild.com/)

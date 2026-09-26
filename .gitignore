@@ -1,55 +1,35 @@
-# Prerequisites
-*.d
+# Meson
+/build/
+/builddir/
+/destdir/
+.meson*
+meson-logs/
+meson-private/
 
-# Object files
+# Generated / object files
 *.o
-*.ko
-*.obj
-*.elf
-
-# Linker output
-*.ilk
-*.map
-*.exp
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Libraries
-*.lib
-*.a
-*.la
 *.lo
-
-# Shared objects (inc. Windows DLLs)
-*.dll
+*.la
+*.a
 *.so
 *.so.*
+*.dll
 *.dylib
-
-# Executables
 *.exe
 *.out
-*.app
-*.i*86
-*.x86_64
-*.hex
 
-# Debug files
+# Debug
 *.dSYM/
 *.su
 *.idb
 *.pdb
-
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
-
-# debug information files
 *.dwo
+
+# Editor / OS
+*~
+*.swp
+.DS_Store
+
+# Example output
+/output.csv
+/libcsv-vapi-roundtrip.csv

@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.vala text eol=lf
+*.vapi text eol=lf
+*.deps text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.build text eol=lf
