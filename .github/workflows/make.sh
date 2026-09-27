@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
-
 source '/etc/os-release'
-declare -ar PKGS=(meson ninja-build vala pkg-config)
+declare -ar PKGS=(vala pkg-config)
 if ! command -v vala; then
     case ${ID:?} in
         debian | ubuntu)
@@ -17,11 +16,6 @@ fi
 shellcheck --external-sources "${0}"
 shfmt -ci -fn -i 4 -d "${0}"
 
-meson setup build
-meson compile -C build
-meson test -C build --print-errorlogs --verbose
-DESTDIR="${PWD}/destdir" meson install -C build
-
 declare -ar VAR=(
     --verbose
     --fatal-warnings
@@ -32,4 +26,6 @@ declare -ar VAR=(
     --pkg=libcsv
     -X -lcsv
 )
+
+vala "${VAR[@]}" 'tests/test_libcsv.vala'
 vala "${VAR[@]}" 'examples/read_csv.vala' --run-args 'sample.csv'
