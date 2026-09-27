@@ -39,13 +39,6 @@ if get_option('examples')
     vala_args: vala_args,
     install: false,
   )
-
-  executable('write-csv',
-    'examples/write_csv.vala',
-    dependencies: [glib_dep, gobject_dep, libcsv_dep],
-    vala_args: vala_args,
-    install: false,
-  )
 endif
 
 test_exe = executable('test-libcsv',

@@ -17,7 +17,7 @@ option flags — those belong to other CSV libraries.
 ## Install the bindings
 
 ```bash
-sudo install -m644 src/libcsv.vapi src/libcsv.deps /usr/share/vala/vapi/
+sudo install -m644 src/libcsv.vapi /usr/share/vala/vapi/
 ```
 
 Or with Meson:
@@ -42,21 +42,6 @@ executable('app', 'main.vala',
   dependencies: [dependency('glib-2.0'), libcsv_dep],
   vala_args: ['--vapidir', meson.current_source_dir() / 'path/to/src', '--pkg', 'libcsv'],
 )
-```
-
-```bash
-declare -ar VAR=(
-    --verbose
-    --fatal-warnings
-    --Xcc=-O3
-    --cc=clang
-    --vapidir=src
-    --enable-{checking,mem-profiler,gobject-tracing}
-    --pkg=libcsv
-    -X -lcsv
-)
-vala "${VAR[@]}" 'examples/read_csv.vala' --run-args 'examples/sample.csv'
-vala "${VAR[@]}" 'examples/write_csv.vala'
 ```
 
 Compile with `--fatal-warnings` (Meson does this for this repo).

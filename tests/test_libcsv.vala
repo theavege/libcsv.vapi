@@ -2,8 +2,6 @@
  * TAP tests for the libcsv Vala bindings against Robert Gamble's C library.
  */
 
-using Csv;
-
 class Counts {
     public int fields;
     public int records;
@@ -78,59 +76,59 @@ static void count_null_field (void* field, size_t len, void* data) {
 static void noop_record (int ch, void* data) {
 }
 
-bool parse_counts (ref Parser parser, string csv, Counts counts) {
+bool parse_counts (ref Csv.Parser parser, string csv, Counts counts) {
     size_t n = csv.length;
     if (parser.parse (csv, n, count_field, count_record, counts) != n)
         return false;
-    return parser.fini (count_field, count_record, counts) == Status.SUCCESS;
+    return parser.fini (count_field, count_record, counts) == Csv.Status.SUCCESS;
 }
 
-bool parse_nulls (ref Parser parser, string csv, NullFields nfields) {
+bool parse_nulls (ref Csv.Parser parser, string csv, NullFields nfields) {
     size_t n = csv.length;
     if (parser.parse (csv, n, count_null_field, noop_record, nfields) != n)
         return false;
-    return parser.fini (count_null_field, noop_record, nfields) == Status.SUCCESS;
+    return parser.fini (count_null_field, noop_record, nfields) == Csv.Status.SUCCESS;
 }
 
 void test_version_constants () {
-    expect ("CSV_MAJOR is 3", MAJOR == 3);
-    expect ("CSV_MINOR is non-negative", MINOR >= 0);
-    expect ("CSV_RELEASE is non-negative", RELEASE >= 0);
+    expect ("CSV_MAJOR is 3", Csv.MAJOR == 3);
+    expect ("CSV_MINOR is non-negative", Csv.MINOR >= 0);
+    expect ("CSV_RELEASE is non-negative", Csv.RELEASE >= 0);
 }
 
 void test_character_constants () {
-    expect ("TAB", TAB == 0x09);
-    expect ("SPACE", SPACE == 0x20);
-    expect ("CR", CR == 0x0d);
-    expect ("LF", LF == 0x0a);
-    expect ("COMMA", COMMA == 0x2c);
-    expect ("QUOTE", QUOTE == 0x22);
+    expect ("TAB", Csv.TAB == 0x09);
+    expect ("SPACE", Csv.SPACE == 0x20);
+    expect ("CR", Csv.CR == 0x0d);
+    expect ("LF", Csv.LF == 0x0a);
+    expect ("COMMA", Csv.COMMA == 0x2c);
+    expect ("QUOTE", Csv.QUOTE == 0x22);
 }
 
 void test_strerror () {
-    expect ("strerror SUCCESS", Csv.strerror (Status.SUCCESS).length > 0);
-    expect ("strerror EPARSE", Csv.strerror (Status.EPARSE).length > 0);
-    expect ("strerror ENOMEM", Csv.strerror (Status.ENOMEM).length > 0);
+    expect ("strerror SUCCESS", Csv.strerror (Csv.Status.SUCCESS).length > 0);
+    expect ("strerror EPARSE", Csv.strerror (Csv.Status.EPARSE).length > 0);
+    expect ("strerror ENOMEM", Csv.strerror (Csv.Status.ENOMEM).length > 0);
 }
 
 void test_parser_init () {
-    var parser = Parser (Options.NONE);
-    expect ("init default delim is comma", parser.get_delim () == COMMA);
-    expect ("init default quote is quote", parser.get_quote () == QUOTE);
-    expect ("init error is SUCCESS", parser.error () == Status.SUCCESS);
+    var parser = Csv.Parser (Csv.Options.NONE);
+    expect ("init default delim is comma", parser.get_delim () == Csv.COMMA);
+    expect ("init default quote is quote", parser.get_quote () == Csv.QUOTE);
+    expect ("init error is SUCCESS", parser.error () == Csv.Status.SUCCESS);
     expect ("init opts NONE", parser.get_opts () == 0);
 }
 
 void test_parser_init_method () {
-    Parser parser = {};
-    expect ("csv_init returns 0", parser.init (Options.APPEND_NULL | Options.STRICT) == 0);
-    expect ("opts include APPEND_NULL", (parser.get_opts () & Options.APPEND_NULL) != 0);
-    expect ("opts include STRICT", (parser.get_opts () & Options.STRICT) != 0);
+    Csv.Parser parser = {};
+    expect ("csv_init returns 0", parser.init (Csv.Options.APPEND_NULL | Csv.Options.STRICT) == 0);
+    expect ("opts include APPEND_NULL", (parser.get_opts () & Csv.Options.APPEND_NULL) != 0);
+    expect ("opts include STRICT", (parser.get_opts () & Csv.Options.STRICT) != 0);
     parser.free ();
 }
 
 void test_parse_simple () {
-    var parser = Parser (Options.APPEND_NULL);
+    var parser = Csv.Parser (Csv.Options.APPEND_NULL);
     var counts = new Counts ();
     expect ("simple parse succeeds",
             parse_counts (ref parser, "name,age\nAlice,30\n", counts));
@@ -141,7 +139,7 @@ void test_parse_simple () {
 }
 
 void test_quoted_comma_and_quote () {
-    var parser = Parser (Options.APPEND_NULL);
+    var parser = Csv.Parser (Csv.Options.APPEND_NULL);
     var counts = new Counts ();
     string csv = "\"Contains, comma\",\"Has \"\"quotes\"\"\"\n";
     expect ("quoted parse succeeds",
@@ -152,7 +150,7 @@ void test_quoted_comma_and_quote () {
 }
 
 void test_custom_delim () {
-    var parser = Parser (Options.APPEND_NULL);
+    var parser = Csv.Parser (Csv.Options.APPEND_NULL);
     parser.set_delim ('|');
     expect ("custom delim stored", parser.get_delim () == '|');
     var counts = new Counts ();
@@ -163,7 +161,7 @@ void test_custom_delim () {
 }
 
 void test_custom_quote () {
-    var parser = Parser (Options.APPEND_NULL);
+    var parser = Csv.Parser (Csv.Options.APPEND_NULL);
     parser.set_quote ('\'');
     expect ("custom quote stored", parser.get_quote () == '\'');
     var counts = new Counts ();
@@ -174,7 +172,7 @@ void test_custom_quote () {
 }
 
 void test_empty_is_null () {
-    var parser = Parser (Options.EMPTY_IS_NULL | Options.APPEND_NULL);
+    var parser = Csv.Parser (Csv.Options.EMPTY_IS_NULL | Csv.Options.APPEND_NULL);
     var n = new NullFields ();
     expect ("empty-is-null parse succeeds",
             parse_nulls (ref parser, "a,,b\n", n));
@@ -183,13 +181,13 @@ void test_empty_is_null () {
 }
 
 void test_strict_parse_error () {
-    var parser = Parser (Options.STRICT | Options.STRICT_FINI);
+    var parser = Csv.Parser (Csv.Options.STRICT | Csv.Options.STRICT_FINI);
     string csv = "\"unterminated";
     size_t n = csv.length;
     size_t consumed = parser.parse (csv, n, null, null, null);
     int fini = parser.fini (null, null, null);
     expect ("strict unclosed quote fails", consumed == n && fini != 0);
-    expect ("error is EPARSE", parser.error () == Status.EPARSE);
+    expect ("error is EPARSE", parser.error () == Csv.Status.EPARSE);
     expect ("EPARSE strerror is useful", Csv.strerror ((int) parser.error ()).length > 0);
 }
 
@@ -221,15 +219,13 @@ void test_fwrite_roundtrip () {
     }
     string[] row = {"Alice", "Contains, comma", "Has \"quotes\""};
     for (int i = 0; i < row.length; i++) {
-        if (i > 0) {
-            out_file.putc (',');
-        }
+        if (i > 0) out_file.putc (',');
         expect ("fwrite field", Csv.fwrite (out_file, row[i], row[i].length) == 0);
     }
     out_file.putc ('\n');
     out_file = null;
 
-    var parser = Parser (Options.APPEND_NULL);
+    var parser = Csv.Parser (Csv.Options.APPEND_NULL);
     var counts = new Counts ();
     var in_file = FileStream.open (path, "rb");
     expect ("fopen read", in_file != null);
@@ -243,7 +239,7 @@ void test_fwrite_roundtrip () {
                 break;
             }
         }
-        ok = ok && parser.fini (count_field, count_record, counts) == Status.SUCCESS;
+        ok = ok && parser.fini (count_field, count_record, counts) == Csv.Status.SUCCESS;
         expect ("fwrite roundtrip parse", ok);
         expect ("roundtrip field count", counts.fields == 3);
         expect ("roundtrip comma field", counts.cells[1] == "Contains, comma");
@@ -254,15 +250,15 @@ void test_fwrite_roundtrip () {
 }
 
 void test_set_opts_and_blk () {
-    var parser = Parser ();
-    expect ("set_opts returns 0", parser.set_opts (Options.APPEND_NULL) == 0);
-    expect ("get_opts sees APPEND_NULL", (parser.get_opts () & Options.APPEND_NULL) != 0);
+    var parser = Csv.Parser ();
+    expect ("set_opts returns 0", parser.set_opts (Csv.Options.APPEND_NULL) == 0);
+    expect ("get_opts sees APPEND_NULL", (parser.get_opts () & Csv.Options.APPEND_NULL) != 0);
     parser.set_blk_size (256);
     expect ("buffer starts empty", parser.get_buffer_size () == 0);
 }
 
 void test_space_and_term_func () {
-    var parser = Parser (Options.APPEND_NULL);
+    var parser = Csv.Parser (Csv.Options.APPEND_NULL);
     parser.set_space_func ((c) => {
         return (int) (c == ' ' || c == '\t');
     });
@@ -276,7 +272,7 @@ void test_space_and_term_func () {
 }
 
 void test_fini_record_c () {
-    var parser = Parser (Options.APPEND_NULL);
+    var parser = Csv.Parser (Csv.Options.APPEND_NULL);
     var counts = new Counts ();
     /* no trailing newline: csv_fini reports the last row with c == -1 */
     expect ("fini parse without newline",
@@ -287,7 +283,7 @@ void test_fini_record_c () {
 
 public int main (string[] args) {
     stdout.printf ("1..65\n");
-    stdout.printf ("# libcsv %d.%d.%d Vala bindings\n", MAJOR, MINOR, RELEASE);
+    stdout.printf ("# libcsv %d.%d.%d Vala bindings\n", Csv.MAJOR, Csv.MINOR, Csv.RELEASE);
 
     test_version_constants ();
     test_character_constants ();
