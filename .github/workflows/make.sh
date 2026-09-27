@@ -2,14 +2,14 @@
 
 set -euo pipefail
 source '/etc/os-release'
-declare -ar PKGS=(vala pkg-config)
+declare -ar PKGS=(shellcheck shfmt)
 if ! command -v vala; then
     case ${ID:?} in
         debian | ubuntu)
             sudo apt-get update
-            sudo apt-get install -y "${PKGS[@]}" libcsv-dev
+            sudo apt-get install -y "${PKGS[@]}" valac libcsv-dev
             ;;
-        fedora | alma) sudo dnf install -y "${PKGS[@]}" libcsv-devel ;;
+        fedora | alma) sudo dnf install -y "${PKGS[@]}" vala libcsv-devel ;;
     esac 1>/dev/null
 fi
 
