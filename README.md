@@ -3,34 +3,16 @@
 Vala bindings for [Robert Gamble's libcsv](https://github.com/rgamble/libcsv),
 a small C library for parsing and writing CSV data.
 
-The VAPI maps the C API 1:1 (`csv.h`). libcsv is callback-based, quotes a
-**single field** at a time when writing, and does not invent extra parse/write
-option flags — those belong to other CSV libraries.
-
 ## Requirements
 
 - Vala (`valac`)
-- GLib 2.0
 - libcsv (`csv.h` and `-lcsv`; Debian/Ubuntu: `libcsv-dev`)
-- Meson and Ninja, if you want to build the examples and tests
 
 ## Install the bindings
 
 ```bash
 sudo install -m644 src/libcsv.vapi /usr/share/vala/vapi/
 ```
-
-Or with Meson:
-
-```bash
-meson setup build
-meson compile -C build
-meson test -C build
-sudo meson install -C build
-```
-
-There is no `libcsv.pc` in most distro packages. Meson locates the library with
-`cc.find_library('csv')` and `csv.h`.
 
 ## Use in your project
 
@@ -160,19 +142,13 @@ Character constants: `TAB`, `SPACE`, `CR`, `LF`, `COMMA`, `QUOTE`.
 ## Examples
 
 ```bash
-meson compile -C build
-./build/read-csv examples/sample.csv
-./build/write-csv /tmp/out.csv
+vala --fatal-warnings --vapidir src --pkg libcsv -X -lcsv examples/simple.vala
 ```
 
 ## Tests
 
 ```bash
-meson test -C build --print-errorlogs
-# or
-valac --fatal-warnings --pkg glib-2.0 --vapidir src --pkg libcsv \
-      tests/test_libcsv.vala -X -lcsv -o test-libcsv
-./test-libcsv
+vala --fatal-warnings --vapidir src --pkg libcsv -X -lcsv tests/test_libcsv.vala
 ```
 
 Tests speak TAP.
@@ -185,4 +161,3 @@ LGPL-2.1, same family as libcsv.
 
 - [libcsv](https://github.com/rgamble/libcsv)
 - [Vala](https://vala.dev/)
-- [Meson](https://mesonbuild.com/)
