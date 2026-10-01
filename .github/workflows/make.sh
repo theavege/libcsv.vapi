@@ -23,7 +23,7 @@ declare -ar VAR=(
     --cc=clang
     --vapidir=src
     --enable-{checking,mem-profiler,gobject-tracing}
-    --pkg={libcsv,gee-0.8}
+    --pkg=libcsv
     -X -lcsv
 )
 
