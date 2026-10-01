@@ -23,9 +23,9 @@ declare -ar VAR=(
     --cc=clang
     --vapidir=src
     --enable-{checking,mem-profiler,gobject-tracing}
-    --pkg=libcsv
+    --pkg={libcsv,gee-0.8}
     -X -lcsv
 )
 
-vala "${VAR[@]}" 'tests/test_libcsv.vala'
-vala "${VAR[@]}" 'examples/read_csv.vala' --run-args 'sample.csv'
+vala "${VAR[@]}" 'tests/simple.vala'
+vala "${VAR[@]}" 'examples/simple.vala' --run-args 'sample.csv'
