@@ -8,8 +8,10 @@ namespace Csv {
 	public const int RELEASE;
 
 	/**
-	 * Codes returned by {@link Parser.error} and {@link Parser.fini}.
-	 * {@link Parser.init} returns 0 on success and -1 if the parser pointer is null.
+	 * Codes returned by {@link Parser.error}. {@link Parser.init} returns 0
+	 * on success and -1 if the parser pointer is null; {@link Parser.fini}
+	 * returns 0 on success and non-zero on failure — call {@link Parser.error}
+	 * afterward for the specific status.
 	 */
 	[CCode (cname = "int", cprefix = "CSV_", has_type_id = false)]
 	public enum Status {
@@ -87,10 +89,10 @@ namespace Csv {
 	[CCode (cname = "struct csv_parser", destroy_function = "csv_free", has_type_id = false, default_value = "{ }")]
 	public struct Parser {
 		[CCode (cname = "csv_init")]
-		public Parser (Options options = 0);
+		public Parser (Options options = Options.NONE);
 
 		[CCode (cname = "csv_init")]
-		public int init (Options options = 0);
+		public int init (Options options = Options.NONE);
 
 		/**
 		 * Parse ''len'' bytes at ''s''. Returns the number of bytes consumed.
@@ -114,7 +116,7 @@ namespace Csv {
 		public Status error ();
 
 		[CCode (cname = "csv_get_opts")]
-		public int get_opts ();
+		public Options get_opts ();
 		[CCode (cname = "csv_set_opts")]
 		public int set_opts (Options options);
 
